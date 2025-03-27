@@ -1,8 +1,20 @@
+// Define the Book type
 export interface Book {
-  authors: string[],
-  description: string;
   bookId: string;
-  image: string;
-  link: string;
+  authors?: string[];
+  description?: string;
   title: string;
+  image?: string;
+  link?: string;
+}
+ export interface GoogleAPIBook {
+  id: string;
+  volumeInfo: {
+    authors?: string[];
+    title: string;
+    description?: string;
+    imageLinks?: {
+      thumbnail?: string;
+    };
+  };
 }

@@ -1,8 +1,11 @@
 import { useQuery, useMutation } from '@apollo/client';
+import { useState, useEffect } from 'react';
 import { GET_ME } from '../utils/queries';
 import { REMOVE_BOOK } from '../utils/mutations';
 import { removeBookId } from '../utils/localStorage';
 import { Container, Card, Button, Row, Col } from 'react-bootstrap';
+import { User } from '../models/User';
+import Auth from '../utils/auth';
 
 const SavedBooks = () => {
   const [userData, setUserData] = useState<User>({
@@ -24,14 +27,13 @@ const SavedBooks = () => {
           return false;
         }
 
-        const response = await getMe(token);
+        const { data } = await useQuery(GET_ME);
 
-        if (!response.ok) {
+        if (!data) {
           throw new Error('something went wrong!');
         }
 
-        const user = await response.json();
-        setUserData(user);
+        setUserData(data.me);
       } catch (err) {
         console.error(err);
       }
@@ -40,6 +42,8 @@ const SavedBooks = () => {
     getUserData();
   }, [userDataLength]);
 
+  const [removeBook] = useMutation(REMOVE_BOOK);
+
   // create function that accepts the book's mongo _id value as param and deletes the book from the database
   const handleDeleteBook = async (bookId: string) => {
     const token = Auth.loggedIn() ? Auth.getToken() : null;
@@ -47,16 +51,15 @@ const SavedBooks = () => {
     if (!token) {
       return false;
     }
-
+      await removeBook({
+        variables: { bookId },
+      });
     try {
-      const response = await deleteBook(bookId, token);
-
-      if (!response.ok) {
-        throw new Error('something went wrong!');
-      }
-
-      const updatedUser = await response.json();
-      setUserData(updatedUser);
+      // Update local user data after removing the book
+      setUserData((prevUserData) => ({
+        ...prevUserData,
+        savedBooks: prevUserData.savedBooks.filter((book) => book.bookId !== bookId),
+      }));
       // upon success, remove book's id from localStorage
       removeBookId(bookId);
     } catch (err) {

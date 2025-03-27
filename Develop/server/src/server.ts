@@ -4,8 +4,8 @@ import db from './config/connection.js';
 import routes from './routes/index.js';
 import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@apollo/server/express4';
-import typeDefs from './schemas/typeDefs.js';
-import resolvers from './schemas/resolvers.js';
+import typeDefs from './schema/typeDefs.js';
+import resolvers from './schema/resolvers.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -23,7 +23,9 @@ await server.start();
 app.use(
   '/graphql',
   expressMiddleware(server, {
-    context: ({ req }) => ({ token: req.headers.authorization }),
+    context: async ({ req }) => {
+      return { token: req.headers.authorization || undefined };
+    },
   })
 );
 

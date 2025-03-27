@@ -2,68 +2,32 @@ import { useMutation } from '@apollo/client';
 import { SAVE_BOOK } from '../utils/mutations';
 import { saveBookIds, getSavedBookIds } from '../utils/localStorage';
 import Auth from '../utils/auth';
-import { searchGoogleBooks } from '../utils/API';
-import { useState, useEffect } from 'react';
-import type { FormEvent } from 'react';
-import { Container, Col, Form, Button, Card, Row } from 'react-bootstrap';
+import React, { useState, useEffect } from 'react';
+import { Form, Container, Row, Col, Button, Card } from 'react-bootstrap';
+import { GoogleAPIBook } from '../models/GoogleAPIBook';
+import { Book } from '../models/Book';
+
+ 
+
+// Removed unused GoogleBookAPIResponse interface
+
 
 const SearchBooks = () => {
-  // create state for holding returned google api data
   const [searchedBooks, setSearchedBooks] = useState<Book[]>([]);
-  // create state for holding our search field data
   const [searchInput, setSearchInput] = useState('');
+  const [saveBook] = useMutation(SAVE_BOOK);
 
-  // create state to hold saved bookId values
   const [savedBookIds, setSavedBookIds] = useState(getSavedBookIds());
-
-  // set up useEffect hook to save `savedBookIds` list to localStorage on component unmount
-  // learn more here: https://reactjs.org/docs/hooks-effect.html#effects-with-cleanup
-  useEffect(() => {
+    useEffect(() => {
     return () => saveBookIds(savedBookIds);
   });
 
-  // create method to search for books and set state on form submit
-  const handleFormSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
-    if (!searchInput) {
-      return false;
-    }
-
     try {
-      const response = await searchGoogleBooks(searchInput);
-
-      if (!response.ok) {
-        throw new Error('something went wrong!');
-      }
-
+      const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${searchInput}`);
       const { items } = await response.json();
-
       const bookData = items.map((book: GoogleAPIBook) => ({
-        bookId: book.id,
-        authors: book.volumeInfo.authors || ['No author to display'],
-        title: book.volumeInfo.title,
-        description: book.volumeInfo.description,
-        image: book.volumeInfo.imageLinks?.thumbnail || '',
-      }));
-
-      setSearchedBooks(bookData);
-      setSearchInput('');
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // create function to handle saving a book to our database
-   const handleFormSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!searchInput) return false;
-
-    try {
-      const response = await searchGoogleBooks(searchInput);
-      if (!response.ok) throw new Error('Something went wrong!');
-      const { items } = await response.json();
-      const bookData = items.map((book) => ({
         bookId: book.id,
         authors: book.volumeInfo.authors || ['No author to display'],
         title: book.volumeInfo.title,
@@ -80,7 +44,7 @@ const SearchBooks = () => {
   const handleSaveBook = async (bookId: string) => {
     const bookToSave = searchedBooks.find((book) => book.bookId === bookId);
     const token = Auth.loggedIn() ? Auth.getToken() : null;
-    if (!token) return false;
+    if (!token || !bookToSave) return false;
 
     try {
       await saveBook({ variables: { bookData: bookToSave } });
@@ -124,7 +88,7 @@ const SearchBooks = () => {
             : 'Search for a book to begin'}
         </h2>
         <Row>
-          {searchedBooks.map((book) => {
+          {searchedBooks.map((book: Book) => {
             return (
               <Col md="4" key={book.bookId}>
                 <Card border='dark'>
