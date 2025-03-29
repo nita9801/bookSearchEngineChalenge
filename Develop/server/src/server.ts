@@ -2,44 +2,27 @@ import express from 'express';
 import path from 'node:path';
 import db from './config/connection.js';
 import routes from './routes/index.js';
-import { ApolloServer } from '@apollo/server';
-import { expressMiddleware } from '@apollo/server/express4';
-import typeDefs from './schema/typeDefs.js';
-import resolvers from './schema/resolvers.js';
-import dotenv from 'dotenv';
+import cors from 'cors';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Apollo Server setup
-const server = new ApolloServer({
-  typeDefs,
-  resolvers,
-});
-await server.start();
-
-app.use(
-  '/graphql',
-  expressMiddleware(server, {
-    context: async ({ req }) => {
-      return { token: req.headers.authorization || undefined };
-    },
-  })
-);
-
+app.use(cors({ origin: 'http://localhost:3000' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Serve static assets in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../client/dist')));
-
-  app.get('*', (_req, res) => {
-    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
-  });
-}
+// Serve the `index.html` file from the root of the client directory
+app.get('/', (_, res) => {
+  res.sendFile(path.join(__dirname, '../../client/index.html'));
+});
+// Serve static files from the client build directory
+app.use(express.static(path.join(__dirname, '../../client/build')));
 
 app.use(routes);
 

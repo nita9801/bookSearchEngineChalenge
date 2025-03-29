@@ -13,6 +13,7 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
-    }
-  }
-})
+    },
+  },
+  root: '.', // Ensure Vite uses the root directory
+});
