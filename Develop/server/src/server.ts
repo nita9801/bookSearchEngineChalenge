@@ -5,6 +5,8 @@ import routes from './routes/index.js';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -21,8 +23,6 @@ app.use(express.json());
 app.get('/', (_, res) => {
   res.sendFile(path.join(__dirname, '../../client/index.html'));
 });
-// Serve static files from the client build directory
-app.use(express.static(path.join(__dirname, '../../client/build')));
 
 app.use(routes);
 
