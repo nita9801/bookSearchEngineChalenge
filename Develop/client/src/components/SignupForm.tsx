@@ -1,53 +1,57 @@
 import { useMutation } from '@apollo/client';
-import { ADD_USER } from '../utils/mutations';
+// Removed duplicate ADD_USER import
 import { useState } from 'react';
-import type { ChangeEvent, FormEvent } from 'react';
 import { Form, Button, Alert } from 'react-bootstrap';
 import Auth from '../utils/auth';
 import type { User } from '../models/User';
+import { gql } from '@apollo/client';
+// Removed incorrect createUser import from '../utils/API'
 
-const SignupForm = ({}: { handleModalClose: () => void }) => {
+const ADD_USER = gql`
+  mutation CreateUser($username: String!, $email: String!, $password: String!) {
+    createUser(username: $username, email: $email, password: $password) {
+      token
+      user {
+        _id
+        username
+        email
+      }
+    }
+  }
+`;
+
+const SignupForm = () => {
   const [userFormData, setUserFormData] = useState<User>({ username: '', email: '', password: '', savedBooks: [] });
+  // Removed redundant useState for savedBooks
   const [validated, setValidated] = useState(false);
+  const [createUserMutation] = useMutation(ADD_USER);
   const [showAlert, setShowAlert] = useState(false);
 
-  // Use the GraphQL mutation
-  const [createUser] = useMutation(ADD_USER);
 
-  const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setValidated(true);
+    console.log('Form submitted:', userFormData);
+  };
+  const handleChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
     setUserFormData({ ...userFormData, [name]: value });
-  };
-
-  const handleFormSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    const form = event.currentTarget;
-    if (form.checkValidity() === false) {
-      event.preventDefault();
-      event.stopPropagation();
-      setValidated(true);
-      return;
-    }
-
     try {
-      // Call the GraphQL mutation
-      const { data } = await createUser({
+      const { data } = await createUserMutation({
         variables: {
           username: userFormData.username,
           email: userFormData.email,
           password: userFormData.password,
         },
       });
-
-      // Extract the token from the response
+  
       const { token } = data.createUser;
       Auth.login(token);
     } catch (err) {
-      console.error(err);
+      console.error('GraphQL Error:', err);
       setShowAlert(true);
     }
-
+  
     setUserFormData({
       username: '',
       email: '',
@@ -55,6 +59,10 @@ const SignupForm = ({}: { handleModalClose: () => void }) => {
       savedBooks: [],
     });
   };
+
+  // Removed redundant handleFormSubmit function declaration
+
+  // Removed redundant handleFormSubmit function declaration
 
   return (
     <>
@@ -69,7 +77,7 @@ const SignupForm = ({}: { handleModalClose: () => void }) => {
             type="text"
             placeholder="Your username"
             name="username"
-            onChange={handleInputChange}
+            onChange={handleChange}
             value={userFormData.username || ''}
             required
           />
@@ -82,7 +90,7 @@ const SignupForm = ({}: { handleModalClose: () => void }) => {
             type="email"
             placeholder="Your email address"
             name="email"
-            onChange={handleInputChange}
+            onChange={handleChange}
             value={userFormData.email || ''}
             required
           />
@@ -95,7 +103,7 @@ const SignupForm = ({}: { handleModalClose: () => void }) => {
             type="password"
             placeholder="Your password"
             name="password"
-            onChange={handleInputChange}
+            onChange={handleChange}
             value={userFormData.password || ''}
             required
           />
@@ -114,3 +122,5 @@ const SignupForm = ({}: { handleModalClose: () => void }) => {
 };
 
 export default SignupForm;
+
+

@@ -1,6 +1,7 @@
-import { gql } from 'graphql-tag';
+import { gql } from 'apollo-server-express';
 
-const typeDefs = gql`
+export const typeDefs = gql`
+ 
   type Book {
     bookId: String!
     authors: [String]

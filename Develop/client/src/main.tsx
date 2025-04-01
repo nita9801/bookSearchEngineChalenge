@@ -8,11 +8,8 @@ import SearchBooks from './pages/SearchBooks'
 import SavedBooks from './pages/SavedBooks'
 
 const client = new ApolloClient({
-  uri: '/graphql',
+  uri: 'http://localhost:3001/graphql', // Ensure this matches your server's GraphQL endpoint
   cache: new InMemoryCache(),
-  headers: {
-    authorization: localStorage.getItem('id_token') || '',
-  },
 });
 
 const router = createBrowserRouter([
@@ -37,3 +34,4 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <RouterProvider router={router} />
   </ApolloProvider>
 );
+export default client;
