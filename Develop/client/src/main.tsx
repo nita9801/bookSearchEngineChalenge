@@ -9,7 +9,7 @@ import SavedBooks from './pages/SavedBooks'
 
 const client = new ApolloClient({
   uri: 'http://localhost:3001/graphql', // Ensure this matches your server's GraphQL endpoint
-  cache: new InMemoryCache(),
+cache: new InMemoryCache(),
 });
 
 const router = createBrowserRouter([
