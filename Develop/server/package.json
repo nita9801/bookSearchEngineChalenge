@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "node --no-deprecation dist/server.js",
     "watch": "nodemon dist/server.js",
     "dev": "concurrently \"npm run watch\" \"cd ../client && npm start\"",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -21,7 +21,7 @@
     "express": "^4.21.2",
     "graphql": "^16.10.0",
     "jsonwebtoken": "^8.5.1",
-    "mongoose": "^8.0.0"
+    "mongoose": "^8.13.2"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
