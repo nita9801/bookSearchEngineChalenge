@@ -1,5 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { AuthenticationError } from 'apollo-server-express';
+
 
 import dotenv from 'dotenv';
 dotenv.config();
@@ -37,3 +39,4 @@ export const signToken = (username: string, email: string, _id: unknown) => {
 
   return jwt.sign(payload, secretKey, { expiresIn: '1h' });
 };
+export { AuthenticationError };

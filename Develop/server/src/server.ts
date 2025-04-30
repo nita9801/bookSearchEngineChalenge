@@ -32,7 +32,12 @@ app.use(
   expressMiddleware(server, {
     context: async ({ req }) => {
       // Add any context logic here (e.g., authentication)
-      return { token: req.headers.authorization };
+      const token = req.headers.authorization;
+      // Mock user object for demonstration; replace with actual user retrieval logic
+      const user = token
+        ? { username: 'mockUser', email: 'mock@example.com', _id: '12345' }
+        : { username: null, email: null, _id: null };
+      return { token, user };
     },
   })
 );
