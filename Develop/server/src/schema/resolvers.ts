@@ -1,48 +1,65 @@
-import User from '../models/User.js';
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-import IBookInput from '../interfaces/bookinputs.js';
+import type IUserContext from '../interfaces/UserContext.js';
+// Ensure the correct path to the UserDocument interface
+import type IUserDocument from '../interfaces/UserDocuments.js';
+// import type IBookInput from '../interfaces/BookInput.js';
+import { User } from '../models/index.js';
+import { signToken, AuthenticationError } from '../services/auth.js';
 
 const resolvers = {
   Query: {
-    me: async (_parent: unknown, _args: any, context: any) => {
-      if (!context.token) throw new Error('Not authenticated');
-      const user = await User.findById(context.user._id);
-      return user;
+    me: async (_parent: any, _args: any, context: IUserContext): Promise<IUserDocument | null> => {
+      
+      if (context.user) {
+
+        const userData = await User.findOne({ _id: context.user._id }).select('-__v -password');
+        return userData;
+      }
+      throw new AuthenticationError('User not authenticated');
     },
   },
   Mutation: {
-    addUser: async (_: unknown, { username, email, password }: { username: string; email: string; password: string }) => {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const user = await User.create({ username, email, password: hashedPassword });
-      const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET_KEY!, { expiresIn: '1h' });
+    addUser: async (_parent: any, args: any): Promise<{ token: string; user: IUserDocument }> => {
+      const user = await User.create(args);
+      const token = signToken(user.username, user.email, user._id);
+            
       return { token, user };
     },
-    login: async (_: unknown, { email, password }: { email: string; password: string }) => {
+    login: async (_parent: any, { email, password }: { email: string; password: string }): Promise<{ token: string; user: IUserDocument }> => {
       const user = await User.findOne({ email });
-      if (!user) throw new Error('User not found');
-      const validPassword = await bcrypt.compare(password, user.password);
-      if (!validPassword) throw new Error('Invalid password');
-      const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET_KEY!, { expiresIn: '1h' });
+
+      if (!user || !(await user.isCorrectPassword(password))) {
+        throw new AuthenticationError('Invalid credentials');
+      }
+
+      const token = signToken(user.username, user.email, user._id);
       return { token, user };
     },
-    saveBook: async (_parent: unknown, { bookData }: { bookData: IBookInput }, context: any) => {
-      if (!context.token) throw new Error('Not authenticated');
-      const user = await User.findByIdAndUpdate(
-        context.user._id,
-        { $addToSet: { savedBooks: bookData } },
-        { new: true }
-      );
-      return user;
+    saveBook: async (_parent: any, { authors, description, bookId, image, link, title }: { authors: [String], description: String, bookId: String, image: String, link: String, title: String}, context: IUserContext): Promise<IUserDocument | null> => {
+      
+      if (context.user) {
+        const updatedUser = await User.findByIdAndUpdate(
+          { _id: context.user._id },
+          { $push: { savedBooks: {authors, description, bookId, image, link, title} } },
+          { new: true }
+        );
+
+        return updatedUser ? updatedUser.toObject() : null;
+      }
+
+      throw new AuthenticationError('User not authenticated');
     },
-    removeBook: async (_parent: unknown, { bookId }: { bookId: string }, context: any) => {
-      if (!context.token) throw new Error('Not authenticated');
-      const user = await User.findByIdAndUpdate(
-        context.user._id,
-        { $pull: { savedBooks: { bookId } } },
-        { new: true }
-      );
-      return user;
+    removeBook: async (_parent: any, { bookId }: { bookId: string }, context: IUserContext): Promise<IUserDocument | null> => {
+      if (context.user) {
+        const updatedUser = await User.findOneAndUpdate(
+          { _id: context.user._id },
+          { $pull: { savedBooks: { bookId } } },
+          { new: true }
+        );
+
+        return updatedUser;
+      }
+
+      throw new AuthenticationError('User not authenticated');
     },
   },
 };

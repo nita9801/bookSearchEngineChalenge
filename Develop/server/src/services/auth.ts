@@ -1,8 +1,6 @@
-import type { Request, Response, NextFunction } from 'express';
+import type { Request } from 'express';
 import jwt from 'jsonwebtoken';
-import { AuthenticationError } from 'apollo-server-express';
-
-
+import { GraphQLError } from 'graphql';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -12,25 +10,25 @@ interface JwtPayload {
   email: string,
 }
 
-export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
+export const authenticateToken = async ({ req }: { req: Request }) => {
   const authHeader = req.headers.authorization;
+  let user = null;
+  console.log('AUTH HEADER', authHeader);
 
   if (authHeader) {
     const token = authHeader.split(' ')[1];
-
+    console.log('TOKEN', token);
     const secretKey = process.env.JWT_SECRET_KEY || '';
 
-    jwt.verify(token, secretKey, (err, user) => {
-      if (err) {
-        return res.sendStatus(403); // Forbidden
-      }
-
-      req.user = user as JwtPayload;
-      return next();
-    });
-  } else {
-    res.sendStatus(401); // Unauthorized
+    try {
+      user = jwt.verify(token, secretKey) as JwtPayload;
+      console.log('USER', user);
+    } catch (err) {
+      console.error(err);
+    }
   }
+
+  return { user };
 };
 
 export const signToken = (username: string, email: string, _id: unknown) => {
@@ -39,4 +37,10 @@ export const signToken = (username: string, email: string, _id: unknown) => {
 
   return jwt.sign(payload, secretKey, { expiresIn: '1h' });
 };
-export { AuthenticationError };
+
+export class AuthenticationError extends GraphQLError {
+  constructor(message: string) {
+    super(message, undefined, undefined, undefined, ['UNAUTHENTICATED']);
+    Object.defineProperty(this, 'name', { value: 'AuthenticationError' });
+  }
+};

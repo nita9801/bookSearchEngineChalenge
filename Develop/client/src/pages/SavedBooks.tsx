@@ -1,48 +1,62 @@
-import { useQuery, useMutation } from '@apollo/client';
-import { useState, useEffect } from 'react';
-import { GET_ME } from '../utils/queries';
-import { REMOVE_BOOK } from '../utils/mutations';
-import { removeBookId } from '../utils/localStorage';
+// import { useState, useEffect } from 'react';
 import { Container, Card, Button, Row, Col } from 'react-bootstrap';
-import { User } from '../models/User';
+
+
+// TODO: Replace with getMe query
+// import { getMe } from '../utils/API';
+import { useQuery } from '@apollo/client';
+import { QUERY_ME } from '../utils/queries';
+
+// TODO: Replace with removeBook mutation
+// import { deleteBook } from '../utils/API';
+import { useMutation } from '@apollo/client';
+import { REMOVE_BOOK } from '../utils/mutations';
+
 import Auth from '../utils/auth';
+import { removeBookId } from '../utils/localStorage';
+// import type { User } from '../models/User';
 
 const SavedBooks = () => {
-  const [userData, setUserData] = useState<User>({
-    username: '',
-    email: '',
-    password: '',
-    savedBooks: [],
-  });
+
+  const {data} = useQuery(QUERY_ME);
+  const [removeBook] = useMutation(REMOVE_BOOK);
+
+  const userData = data?.me || {};
+
+  // const [userData, setUserData] = useState<User>({
+  //   username: '',
+  //   email: '',
+  //   password: '',
+  //   savedBooks: [],
+  // });
 
   // use this to determine if `useEffect()` hook needs to run again
   const userDataLength = Object.keys(userData).length;
 
-  useEffect(() => {
-    const getUserData = async () => {
-      try {
-        const token = Auth.loggedIn() ? Auth.getToken() : null;
+  // useEffect(() => {
+  //   const getUserData = async () => {
+  //     try {
+  //       const token = Auth.loggedIn() ? Auth.getToken() : null;
 
-        if (!token) {
-          return false;
-        }
+  //       if (!token) {
+  //         return false;
+  //       }
+        
+  //       const response = await getMe(token);
 
-        const { data } = await useQuery(GET_ME);
+  //       if (!response.ok) {
+  //         throw new Error('something went wrong!');
+  //       }
 
-        if (!data) {
-          throw new Error('something went wrong!');
-        }
+  //       const user = await response.json();
+  //       setUserData(user);
+  //     } catch (err) {
+  //       console.error(err);
+  //     }
+  //   };
 
-        setUserData(data.me);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-
-    getUserData();
-  }, [userDataLength]);
-
-  const [removeBook] = useMutation(REMOVE_BOOK);
+  //   getUserData();
+  // }, [userDataLength]);
 
   // create function that accepts the book's mongo _id value as param and deletes the book from the database
   const handleDeleteBook = async (bookId: string) => {
@@ -51,15 +65,26 @@ const SavedBooks = () => {
     if (!token) {
       return false;
     }
-      await removeBook({
-        variables: { bookId },
-      });
+
     try {
-      // Update local user data after removing the book
-      setUserData((prevUserData) => ({
-        ...prevUserData,
-        savedBooks: prevUserData.savedBooks.filter((book) => book.bookId !== bookId),
-      }));
+      // const response = await deleteBook(bookId, token);
+      await removeBook({
+        variables: {
+          "bookId": bookId
+        }
+      })
+
+      // if (!response.ok) {
+      //   throw new Error('something went wrong!');
+      // }
+      // if (!response.data) {
+      //   throw new Error('something went wrong!');
+      // }
+
+      // const updatedUser = await response.json();
+      // const updatedUser = response.data.removeBook;
+      
+      // setUserData(updatedUser);
       // upon success, remove book's id from localStorage
       removeBookId(bookId);
     } catch (err) {
@@ -92,7 +117,7 @@ const SavedBooks = () => {
             : 'You have no saved books!'}
         </h2>
         <Row>
-          {userData.savedBooks.map((book) => {
+          {userData.savedBooks.map((book: any) => {
             return (
               <Col md='4'>
                 <Card key={book.bookId} border='dark'>
