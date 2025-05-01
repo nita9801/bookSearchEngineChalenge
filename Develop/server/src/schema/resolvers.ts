@@ -4,8 +4,12 @@ import type IUserDocument from '../interfaces/UserDocuments.js';
 // import type IBookInput from '../interfaces/BookInput.js';
 import { User } from '../models/index.js';
 import { signToken, AuthenticationError } from '../services/auth.js';
+import bcrypt from 'bcrypt';
+import { Post } from '../models/Post.js';
 
-const resolvers = {
+import type { IResolvers } from '@graphql-tools/utils';
+
+const resolvers: IResolvers = {
   Query: {
     me: async (_parent: any, _args: any, context: IUserContext): Promise<IUserDocument | null> => {
       
@@ -18,8 +22,9 @@ const resolvers = {
     },
   },
   Mutation: {
-    addUser: async (_parent: any, args: any): Promise<{ token: string; user: IUserDocument }> => {
-      const user = await User.create(args);
+    addUser: async (_parent: any, { username, email, password }: { username: string; email: string; password: string }) => {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const user = await User.create({ username, email, password: hashedPassword });
       const token = signToken(user.username, user.email, user._id);
             
       return { token, user };
@@ -60,8 +65,24 @@ const resolvers = {
       }
 
       throw new AuthenticationError('User not authenticated');
-    },
   },
+  addComment: async (_parent: any, { postId, commentText }: { postId: string; commentText: string }, context: IUserContext) => {
+    if (!context.user) {
+      throw new AuthenticationError('You need to be logged in!');
+    }
+  
+    const updatedPost = await Post.findByIdAndUpdate(
+      postId,
+      { $push: { comments: { commentText, username: context.user.username } } },
+      { new: true, runValidators: true }
+    );
+  
+    if (!updatedPost) {
+      throw new Error('Post not found');
+    }
+  
+    return updatedPost; // Return the updated post
+  }
+  }
 };
-
 export default resolvers;
