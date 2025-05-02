@@ -1,132 +1,68 @@
-import User from '../models/User.js';
-import { signToken } from '../services/auth.js';
-import { Document } from 'mongoose';
-import { AuthenticationError } from 'apollo-server-express';
+import type IUserContext from '../interfaces/UserContext.js';
+import type IUserDocument from '../interfaces/UserDocuments.js';
+// import type IBookInput from '../interfaces/BookInput.js';
+import { User } from '../models/index.js';
+import { signToken, AuthenticationError } from '../services/auth.js';
 
-interface Context {
-    user?: { _id: string };
-}
-
-interface BookData {
-    bookId: string;
-    title: string;
-    authors: string[];
-    description?: string;
-    image?: string;
-    link?: string;
-}
-
-interface UserDocument extends Document {
-    username: string;
-    email: string;
-    password: string;
-    savedBooks: BookData[];
-    isCorrectPassword(password: string): Promise<boolean>;
-}
-
-interface LoginArgs {
-    email: string;
-    password: string;
-}
-
-interface AddUserArgs {
-    username: string;
-    email: string;
-    password: string;
-}
-
-interface SaveBookArgs {
-    bookData: BookData;
-}
-
-interface RemoveBookArgs {
-    bookId: string;
-}
-
-const resolvers: {
+const resolvers = {
   Query: {
-    me: (_parent: unknown, _args: unknown, context: Context) => Promise<UserDocument | null>;
-  };
-  Mutation: {
-    login: (_parent: unknown, args: LoginArgs) => Promise<{ token: string; user: UserDocument }>;
-    addUser: (_parent: unknown, args: AddUserArgs) => Promise<{ token: string; user: UserDocument }>;
-    saveBook: (_parent: unknown, args: SaveBookArgs, context: Context) => Promise<UserDocument | null>;
-    removeBook: (_parent: unknown, args: RemoveBookArgs, context: Context) => Promise<UserDocument | null>;
-  };
-} = {
-  Query: {
-    me: async (_parent: unknown, _args: unknown, context: Context) => {
-      if (!context.user) {
-        throw new AuthenticationError('User not authenticated');
+    me: async (_parent: any, _args: any, context: IUserContext): Promise<IUserDocument | null> => {
+      
+      if (context.user) {
+
+        const userData = await User.findOne({ _id: context.user._id }).select('-__v -password');
+        return userData;
       }
-    
-      try {
-        const user = await User.findById(context.user._id);
-        if (!user) {
-          throw new Error('User not found');
-        }
-        return user;
-      } catch (err) {
-        console.error('Error in me resolver:', err);
-        throw new Error('Failed to fetch user data');
-      }
-              console.log('User in context:', context.user);
-      }
+      throw new AuthenticationError('User not authenticated');
     },
-
+  },
   Mutation: {
-    login: async (_parent: unknown, { email, password }: LoginArgs) => {
-      const user = await User.findOne({ $or: [{ email }, { username: email }] }) as UserDocument | null;
-      if (!user) {
-        throw new Error("Can't find this user");
-      }
+    addUser: async (_parent: any, args: any): Promise<{ token: string; user: IUserDocument }> => {
+      const user = await User.create(args);
+      console.log('add user', user);
+      const token = signToken(user.username, user.email, user._id);
+            
+      return { token, user };
+    },
+    login: async (_parent: any, { email, password }: { email: string; password: string }): Promise<{ token: string; user: IUserDocument }> => {
+      console.log('email', email);
+      const user = await User.findOne({ email });
 
-      const correctPw = await user.isCorrectPassword(password);
-      if (!correctPw) {
-        throw new Error('Wrong password!');
+      if (!user || !(await user.isCorrectPassword(password))) {
+        throw new AuthenticationError('Invalid credentials');
       }
 
       const token = signToken(user.username, user.email, user._id);
       return { token, user };
     },
-    addUser: async (_parent: unknown, { username, email, password }: AddUserArgs) => {
-      try {
-        const user = await User.create({ username, email, password }) as UserDocument;
-        const token = signToken(user.username, user.email, user._id);
-        return { token, user };
-      } catch (err: any) {
-        if (err.code === 11000) {
-          throw new Error('Username or email already exists');
-        }
-        throw new Error('Something went wrong');
+    saveBook: async (_parent: any, { authors, description, bookId, image, link, title }: { authors: [String], description: String, bookId: String, image: String, link: String, title: String}, context: IUserContext): Promise<IUserDocument | null> => {
+      
+      if (context.user) {
+        const updatedUser = await User.findByIdAndUpdate(
+          { _id: context.user._id },
+          { $push: { savedBooks: {authors, description, bookId, image, link, title} } },
+          { new: true }
+        );
+
+        return updatedUser;
       }
+
+      throw new AuthenticationError('User not authenticated');
     },
-    saveBook: async (_parent: unknown, { bookData }: SaveBookArgs, context: Context) => {
-      if (!context.user) {
-        throw new AuthenticationError('You need to be logged in!');
+    removeBook: async (_parent: any, { bookId }: { bookId: string }, context: IUserContext): Promise<IUserDocument | null> => {
+      if (context.user) {
+        const updatedUser = await User.findOneAndUpdate(
+          { _id: context.user._id },
+          { $pull: { savedBooks: { bookId } } },
+          { new: true }
+        );
+
+        return updatedUser;
       }
-    
-      const updatedUser = await User.findByIdAndUpdate(
-        context.user._id,
-        { $addToSet: { savedBooks: bookData } },
-        { new: true, runValidators: true }
-      );
-    
-      return updatedUser;
+
+      throw new AuthenticationError('User not authenticated');
     },
-    removeBook: async (_parent: unknown, { bookId }: RemoveBookArgs, context: Context) => {
-      if (!context.user) {
-        throw new AuthenticationError('You need to be logged in!');
-      }
-    
-      const updatedUser = await User.findByIdAndUpdate(
-        context.user._id,
-        { $pull: { savedBooks: { bookId } } },
-        { new: true }
-      );
-    
-      return updatedUser;
-    }
-  }
+  },
 };
+
 export default resolvers;
