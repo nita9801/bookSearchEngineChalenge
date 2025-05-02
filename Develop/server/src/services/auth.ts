@@ -1,46 +1,67 @@
-import type { Request } from 'express';
 import jwt from 'jsonwebtoken';
-import { GraphQLError } from 'graphql';
 import dotenv from 'dotenv';
+import { AuthenticationError } from 'apollo-server-express';
 dotenv.config();
 
 interface JwtPayload {
   _id: unknown;
   username: string;
-  email: string,
+  email: string;
+  exp?: number; // Optional expiration field
 }
 
-export const authenticateToken = async ({ req }: { req: Request }) => {
+export const authMiddleware = ({ req }: { req: any }) => {
   const authHeader = req.headers.authorization;
-  let user = null;
-  console.log('AUTH HEADER', authHeader);
 
   if (authHeader) {
     const token = authHeader.split(' ')[1];
-    console.log('TOKEN', token);
     const secretKey = process.env.JWT_SECRET_KEY || '';
 
+    console.log('Token received:', token); // Log the token
+
     try {
-      user = jwt.verify(token, secretKey) as JwtPayload;
-      console.log('USER', user);
+      const decoded = jwt.decode(token) as JwtPayload | null;
+
+      if (!decoded || !decoded.exp) {
+        throw new Error('Token does not contain expiration date');
+      }
+
+      const currentTime = Math.floor(Date.now() / 1000);
+      if (decoded.exp < currentTime) {
+        throw new Error('Token has expired');
+      }
+
+      const user = jwt.verify(token, secretKey) as JwtPayload;
+      return { user };
     } catch (err) {
-      console.error(err);
+      console.error('Invalid token:', err);
+      throw new Error('Invalid token');
     }
   }
 
-  return { user };
+  return { user: null };
 };
+
+export const authenticateToken = (token: string) => {
+  const secretKey = process.env.JWT_SECRET_KEY || '';
+
+  if (!token) {
+    throw new AuthenticationError('No token provided');
+  }
+
+  try {
+    const decoded = jwt.verify(token, secretKey); // Verify the token
+    return decoded; // Return the decoded user
+  } catch (err) {
+    throw new AuthenticationError('Invalid or expired token');
+  }
+};
+// console.log('Decoded user:', decoded); // Removed or commented out as 'decoded' is not defined in this scope
 
 export const signToken = (username: string, email: string, _id: unknown) => {
   const payload = { username, email, _id };
   const secretKey = process.env.JWT_SECRET_KEY || '';
-
-  return jwt.sign(payload, secretKey, { expiresIn: '1h' });
-};
-
-export class AuthenticationError extends GraphQLError {
-  constructor(message: string) {
-    super(message, undefined, undefined, undefined, ['UNAUTHENTICATED']);
-    Object.defineProperty(this, 'name', { value: 'AuthenticationError' });
-  }
+  const token = jwt.sign(payload, secretKey, { expiresIn: '1h' });
+  console.log('Generated Token:', token); 
+  return token;
 };
