@@ -1,19 +1,29 @@
 import { gql } from '@apollo/client';
+import { DocumentNode } from 'graphql';
 
-export const QUERY_ME = gql`
- query Me {
-  me {
-    _id
-    email
-    savedBooks {
-      authors
-      bookId
-      description
-      image
-      link
-      title
+export const GET_ME = gql`
+  query getMe {
+    me {
+      _id
+      username
+      email
+      savedBooks {
+        bookId
+        authors
+        description
+        title
+        image
+        link
+      }
     }
-    username
   }
-}
+`;
+
+export const GET_BOOKS: DocumentNode = gql`
+  query GetBooks {
+    books {
+      title
+      author
+    }
+  }
 `;

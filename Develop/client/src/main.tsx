@@ -1,29 +1,10 @@
-import ReactDOM from 'react-dom/client';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import 'bootstrap/dist/css/bootstrap.min.css';
+import ReactDOM from 'react-dom/client'
+import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import 'bootstrap/dist/css/bootstrap.min.css'
 
-import App from './App.jsx';
-import SearchBooks from './pages/SearchBooks';
-import SavedBooks from './pages/SavedBooks';
-import { ApolloClient, InMemoryCache, ApolloProvider } from '@apollo/client';
-
-const httpLink = createHttpLink({
-  uri: '/graphql', // Matches your Vite proxy configuration
-});
-
-const authLink = setContext((_, { headers }) => {
-  const token = localStorage.getItem('id_token'); // Retrieve the token from localStorage
-  return {
-    headers: {
-      ...headers,
-      authorization: token ? `Bearer ${token}` : '',
-    },
-  };
-});
-const client = new ApolloClient({
-  uri: '/graphql', // This should match the Vite proxy configuration
-  cache: new InMemoryCache(),
-});
+import App from './App.jsx'
+import SearchBooks from './pages/SearchBooks'
+import SavedBooks from './pages/SavedBooks'
 
 const router = createBrowserRouter([
   {
@@ -33,18 +14,15 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <SearchBooks />,
-      },
-      {
+        element: <SearchBooks />
+      }, {
         path: '/saved',
-        element: <SavedBooks />,
-      },
-    ],
-  },
-]);
+        element: <SavedBooks />
+      }
+    ]
+  }
+])
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <ApolloProvider client={client}>
-    <RouterProvider router={router} />
-  </ApolloProvider>
-);
+  <RouterProvider router={router} />
+)
