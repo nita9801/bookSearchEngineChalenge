@@ -1,4 +1,4 @@
-export default interface IUserContext { 
+export default interface Context { 
   user: {
     username: string | null;
     email: string | null;
