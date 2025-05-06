@@ -1,4 +1,4 @@
-export default interface IBookInput {
+export default interface bookData {
     bookId: string | null;
     title: string | null;
     authors?: string[] | null;
